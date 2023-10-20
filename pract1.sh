@@ -1,22 +1,32 @@
 #!/bin/bash
 
+#Es declaren les variables codi_estat i codi_pais, s'inicialitzen a "XX".
 codi_estat="XX"
 codi_pais="XX"
+
+
 #Comanda lp
+
 #Extreu les columnes 7 i 8 (country_code i country_name) de dintre de l'arxiu, les ordena alfabèticament, treu les linies que es repeteixen, les posa com a columnes de taula rectes i en treu la coma i hi afegeix espai entre les dues.
 
 listar_paises() {
-	cut -d',' -f7,8 cities.csv | sort | uniq | column -t -s ',' | sed 's/,/ /g'
+	cut -d',' -f7,8 cities.csv | sort | uniq | column -t -s ','
 }
+
 #Comanda sc
+
 seleccionar_pais() {
+		#Es demana el nom del pais.
                 read -p "Introdueix el nom del pais: " pais
+		#Si la variable "pais" no s'ha deixat buida, es busquen les linies que contenen el pais a l'arxi. S'extreuen les repeticions, de manera que només surt un codi.. La sortida és el codi del pais. Si la variable "pais" deixat buida, no es fa res, de manera que es mantindrà el valor de codi_pais anterior. Si el pais no existeix (no es troba a l'arxiu el seu codi), el codi_pais valdrà "XX".
 		if [ -n "$pais" ]; then
 			codi_pais=$(grep -w "$pais" cities.csv | awk -F ',' 'NR==1 {print $7; exit}'u)
                 	if [ -z "$codi_pais" ]; then
                         	codi_pais="XX"
                 	fi
+
                 fi
+		 #S'imprimeix el codi del pais.
                 echo "Codi del país seleccionat: $codi_pais"
 
         }
@@ -108,44 +118,47 @@ extreure_poblacions_estat() {
 
 #Comanda gwd
 gwd() {
+   #Demana el nom d'una població. Filtra buscant les files que continguin la variable de la població, estat i pais seleccionats. Imprimeix la fila 11 dela linea que conté els 3 i la sortida es el wikidataId.
    echo -n "Introdueix el nom de la població: "
    read poblacio
    wikidataId=$(grep -i "$poblacio" cities.csv | grep -i "$estat" | grep -i "$pais" | cut -d ',' -f 11)
 
   if [ -n "$wikidataId" ]; then
-    # Realiza la solicitud a WikiData y guarda la respuesta en un archivo
+    # Realitza la solicitud a WikiData y desa la resposta en un arxiu anomenar "$wikidataId.json".
     wget -O "$wikidataId.json" "https://www.wikidata.org/wiki/Special:EntityData/$wikidataId.json"
     echo "Informació guardada com a $wikidataId.json"
-
+  # Si no es troba cap fila amb les 3 coincidencies o la població no té un wikiData, imprimeix el missatge.
   else
     echo "No s'ha trobat informació a WikiData per a aquesta població."
   fi
 }
 
 # Comanda est
+
 est() {
-  # Número de poblaciones en el hemisferio norte (latitud > 0)
+
+  # Número de poblacions en l'hemisferi nort (latitud > 0). Extraiem la fila 9 (latitud) i veiem si el seu valor és possitiu. Al final de tenir totes les latituds que ho compleixen, comptem el nombre de línies, correspon al número de poblacions al nord.
   nord=$(cut -d ',' -f9 cities.csv | awk -F ',' '$1 > 0' | wc -l)
 
-  # Número de poblaciones en el hemisferio sur (latitud < 0)
+  #Número de poblacions en l'hemisferi sud (latitud < 0). Extraiem la fila 9 (latitud) i veiem si el seu valor és negatiu. Al final de tenir totes les latituds que ho compleixen, comptem el nombre de línies, correspon al número de poblacions al sud.
   sud=$(cut -d ',' -f9 cities.csv | awk -F ',' '$1 < 0' | wc -l)
 
-  # Número de poblaciones en el hemisferio oriental (longitud > 0)
+   # Número de poblacions en l'hemisferi oriental (longitud > 0). Extraiem la fila 10 (longitud) i veiem si el seu valor és possitiu. Al final de tenir totes les longituds que ho compleixen, comptem el nombre de línies, correspon al número de poblacions a orient.
   est=$(cut -d ',' -f10 cities.csv | awk -F ',' '$1 > 0' | wc -l)
 
-  # Número de poblaciones en el hemisferio occidental (longitud < 0)
+   # Número de poblacions en l'hemisferi occidental (longitud < 0). Extraiem la fila 10 (longitud) i veiem si el seu valor és negatiu. Al final de tenir totes les longituds que ho compleixen, comptem el nombre de línies, correspon al número de poblacions a occident.
   oest=$(cut -d ',' -f10 cities.csv | awk -F ',' '$1 < 0' | wc -l)
 
-  # Número de poblaciones sin ubicación (latitud y longitud == 0)
+  # Número de poblacions sense ubicació (latitud i longitud == 0). Fem el procés de les altres, però en aquest cas els dos valors resultants són 0.
   no_ubic=$(cut -d ',' -f9,10 cities.csv | awk -F ',' '$1 == 0 && $2 == 0' | wc -l)
 
-  # Número de poblaciones sin wikidataId
+  # Número de poblaciones sense wikidataId. 
   no_wdid=$(cut -d ',' -f11 cities.csv | grep -c -w '')
-
+  #Imprimeix-los per pantalla.
   echo "Nord $nord Sud $sud Est $est Oest $oest No ubic $no_ubic No WDId $no_wdid"
 }
 
-
+#Bucle, el menú s'executa de forma continua fins que es surti. Es mostra el conjunt d'opcions ordenades.
 while true; do
   echo "Menú de opciones:"
   echo "1. Llistar països (lp)"
@@ -159,10 +172,10 @@ while true; do
   echo "9. Obtenir dades d'una ciutat de la WikiData (gwd)"
   echo "10. Obtenir estadístiques (est)"
   echo "0. Sortir"
-
+#Es demana seleccionar una de les opcions del menú.
   echo -n "Selecciona una opció: "
   read opcio
-
+#Introduïnt el número o l'abreviatura de les opcions, es crida a la funció que les executa.
    case $opcio in
     1|lp)
       listar_paises
@@ -198,6 +211,7 @@ while true; do
       echo "Sortint de l'aplicació"
       exit 0
       ;;
+     #Si no s'introdueix cap de les opcions posibles, s'imprimeix el missatge per pantalla.  
     *)
       echo "Opció no vàlida"
       ;;
